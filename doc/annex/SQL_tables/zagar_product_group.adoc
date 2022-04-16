@@ -1,0 +1,21 @@
+[cols="3*<.<"]
+[%autowidth]
+|===
+
+h|Столбец
+h|Тип
+h|Описание
+
+|*сode*
+|VARCHAR(3)
+|Код группы продукта Zagar
+
+|*Description*
+|VARCHAR(512)
+|Описание группы продуктов Zagar
+
+|*CurrencyRateType_id*
+|SMALLINT
+|Идентификатор типа курсов валют внутренний
+
+|===

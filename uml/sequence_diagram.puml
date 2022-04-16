@@ -1,0 +1,35 @@
+@startuml
+
+hide footbox
+title Метод проверки открытия счета или карты
+
+participant DFS
+participant myGREMLINI
+entity "check-data" as check
+control "AML-AF" as AML
+
+DFS -> check : OpeningAccountDepositRequest
+activate check
+
+check -> AML : PaymentTransfer_check
+activate AML
+
+check /-- AML : PaymentTransfer_resp
+deactivate AML
+
+DFS /-- check : OpeningAccountDepositResponse
+deactivate check
+
+myGREMLINI-> check : OpeningAccountDepositRequest
+activate check
+
+check -> AML : PaymentTransfer_check
+activate AML
+
+check /-- AML : PaymentTransfer_resp
+deactivate AML
+
+myGREMLINI /-- check : OpeningAccountDepositResponse
+deactivate check
+
+@enduml

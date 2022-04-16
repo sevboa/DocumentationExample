@@ -1,0 +1,257 @@
+swagger: '2.0'
+info:
+    description: 'Микросервис для предоставления курсов валют'
+    version: 1.0.0
+    title: currency-rate
+    termsOfService: 'http://bank.ru/api/terms/'
+    contact:
+        name: 'Команда интеграции'
+        email: '#Analitics@bank.ru'
+    license:
+        name: 'Собственность Банка'
+        url: 'https://www.bank.ru/'
+externalDocs:
+    description: 'Паспорт (ТЗ) currency-rate'
+    url: 'https://dit.bank.ru/confluence/display/MIC/currency-rate_1.0.0_draft'
+host: $(catalog.host)
+basePath: /currency_rate/v1
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+tags:
+  - name: currentCurrencyRates
+    description: 'Текущие курсы валют'
+paths:
+    /get_current_currency_rates:
+        post:
+            tags:
+              - currentCurrencyRates
+            summary: 'Метод предназначен для получения текущих курсов валюты'
+            description: 'Метод предназначен для получения текущих курсов валюты'
+            operationId: getCurrentCurrencyRates
+            parameters:
+              - in: body
+                name: currentCurrencyRates
+                required: true
+                schema:
+                    $ref: '#/definitions/CurrentCurrencyRatesRequest'
+            responses:
+                '200':
+                    description: 'Successful operation'
+                    schema:
+                        $ref: '#/definitions/CurrentCurrencyRatesResponse'
+                '400':
+                    description: 'Bad Request'
+                    schema:
+                        $ref: '#/definitions/Error'
+                '500':
+                    description: 'Internal Server Error'
+                    schema:
+                        $ref: '#/definitions/Error'
+definitions:
+    CurrentCurrencyRatesRequest:
+        type: object
+        required:
+          - 'currencyRateTypeCode'
+        properties:
+            currencyRateTypeCode:
+                type: string
+                enum:
+                  - 'central_bank'          # курс ЦБ
+                  - 'cash'                  # курс наличный
+                  - 'non_cash'              # курс безналичный
+                  - 'non_cash_for_cards'    # курс безналичный для карт
+                description: 'Тип курса валют определяющий сами курсы и набор валютных пар'
+            characteristicsRates:
+                type: array
+                minItems: 1
+                description: 'Массив характеристик курсов'
+                items:
+                    type: object
+                    description: Характеристики курсов
+                    properties:
+                        bankOfficeCodes:
+                            type: array
+                            minItems: 1
+                            description: 'Коды офисов банков'
+                            items:
+                                type: string
+                                maxLength: 6
+                                description: 'Код офиса банка'
+                                example: '4556'
+                        currencyExchangeAmount:
+                            type: number
+                            format: double
+                            description: 'Сумма обмена валюты для определения лимитов курсов'
+                            example: 589.32
+                        rates:
+                            type: array
+                            minItems: 1
+                            description: 'Массив курсов валют'
+                            items: 
+                                type: object
+                                description: 'Курс валют'
+                                properties:
+                                    baseCurrencyDigitCode:
+                                        type: string
+                                        maxLength: 3
+                                        description: 'Цифровой код базовой валюты согласно ISO 4217'
+                                        example: '643'
+                                    baseCurrencySignCode:
+                                        type: string
+                                        maxLength: 3
+                                        description: 'Буквенный код базовой валюты согласно ISO 4217'
+                                        example: 'RUB'
+                                    quotedCurrencyDigitCode:
+                                        type: string
+                                        maxLength: 3
+                                        description: 'Цифровой код котируемой валюты согласно ISO 4217'
+                                        example: '392'
+                                    quotedCurrencySignCode:
+                                        type: string
+                                        maxLength: 3
+                                        description: 'Буквенный код котируемой валюты согласно ISO 4217'
+                                        example: 'JPY'
+    CurrentCurrencyRatesResponse:
+        type: object
+        required:
+          - 'currencyRateTypeCode'
+          - 'characteristicsRates'
+        properties:
+            currencyRateTypeCode:
+                type: string
+                enum:
+                  - 'central_bank'          # курс ЦБ
+                  - 'cash'                  # курс наличный
+                  - 'non_cash'              # курс безналичный
+                  - 'non_cash_for_cards'    # курс безналичный для карт
+                description: 'Тип курса валют определяющий сами курсы и набор валютных пар'
+            characteristicsRates:
+                type: array
+                minItems: 1
+                description: 'Массив характеристик курсов'
+                items:
+                    type: object
+                    required:
+                      - 'exchangeRateLimitFrom'
+                      - 'rates'
+                    description: Характеристики курсов
+                    properties:
+                        bankOfficeCodes:
+                            type: array
+                            minItems: 1
+                            description: 'Коды офисов банков'
+                            items:
+                                type: string
+                                maxLength: 6
+                                description: 'Код офиса банка'
+                                example: '4556'
+                        exchangeRateLimitFrom:
+                            type: integer
+                            format: int64
+                            description: 'Лимит действия курса от, включительно'
+                            example: '0'
+                        exchangeRateLimitTo:
+                            type: integer
+                            format: int64
+                            description: 'Лимит действия курса до, исключительно'
+                            example: '100'
+                        rates:
+                            type: array
+                            minItems: 1
+                            description: 'Массив курсов валют'
+                            items: 
+                                type: object
+                                required:
+                                  - 'baseCurrencyDigitCode'
+                                  - 'baseCurrencySignCode'
+                                  - 'quotedCurrencyDigitCode'
+                                  - 'quotedCurrencySignCode'
+                                  - 'buyRate'
+                                  - 'sellRate'
+                                  - 'baseCurrencyScale'
+                                  - 'quotedCurrencyScale'
+                                  - 'validFrom'
+                                description: 'Курс валют'
+                                properties:
+                                    baseCurrencyDigitCode:
+                                        type: string
+                                        maxLength: 3
+                                        description: 'Цифровой код базовой валюты согласно ISO 4217'
+                                        example: '392'
+                                    baseCurrencySignCode:
+                                        type: string
+                                        maxLength: 3
+                                        description: 'Буквенный код базовой валюты согласно ISO 4217'
+                                        example: 'JPY'
+                                    quotedCurrencyDigitCode:
+                                        type: string
+                                        maxLength: 3
+                                        description: 'Цифровой код котируемой валюты согласно ISO 4217'
+                                        example: '643'
+                                    quotedCurrencySignCode:
+                                        type: string
+                                        maxLength: 3
+                                        description: 'Буквенный код котируемой валюты согласно ISO 4217'
+                                        example: 'RUB'
+                                    buyRate:
+                                        type: number
+                                        format: double
+                                        description: 'Курс покупки'
+                                        example: 0.667029
+                                    sellRate:
+                                        type: number
+                                        format: double
+                                        description: 'Курс продажи'
+                                        example: 0.654067
+                                    baseCurrencyScale:
+                                        type: integer
+                                        format: int64
+                                        description: 'Масштабный множитель для базовой валюты'
+                                        example: 100
+                                    quotedCurrencyScale:
+                                        type: integer
+                                        format: int64
+                                        description: 'Масштабный множитель для котируемой валюты'
+                                        example: 1
+                                    validFrom:
+                                        type: string
+                                        format: date-time
+                                        description: 'Дата и время начала действия курса'
+                                        example: '2022-01-18T23:20:50.52Z'
+#error
+    AttrError:
+        required:
+          - code
+          - attr
+        additionalProperties: true
+        properties:
+            attr:
+                description: 'Наименование атрибута'
+                type: string
+            code:
+                description: 'Код ошибки'
+                type: string
+            message:
+                description: 'Сообщение об ошибке, возникшей при валидации атрибута'
+                type: string
+    Error:
+        required:
+          - code
+        additionalProperties: true
+        properties:
+            code:
+                description: 'Код ошибки'
+                type: string
+            message:
+                description: 'Сообщение об ошибке'
+                type: string
+            attrErrors:
+                description: 'Ошибки бизнес-валидации атрибутов'
+                type: array
+                items:
+                    $ref: '#/definitions/AttrError'
+

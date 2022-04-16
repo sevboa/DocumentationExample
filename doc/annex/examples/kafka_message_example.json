@@ -1,0 +1,118 @@
+{
+  "body": [
+    {
+      "productGroup": "Московский регион",
+      "productGroupCode": "10",
+      "content": [
+        {
+          "productName": "Московский регион от 0",
+          "productCode": null,
+          "internetCode": null,
+          "limit": 0,
+          "officeCode": [
+            "4556",
+            "1223"
+          ],
+          "rates": [
+            {
+              "validFrom": "2021-08-18 10:25:45",
+              "dateTimeLoad": "2021-08-18 10:35:45",
+              "buyRate": 71.38,
+              "sellRate": 71.68,
+              "baseCurrencyDigitCode": "840",
+              "baseCurrencySignCode": "USD",
+              "quotedCurrencyDigitCode": "643",
+              "quotedCurrencySignCode": "RUB",
+              "baseCurrencyScale": 1
+            },
+            {
+              "validFrom": "2021-08-18 10:25:45",
+              "dateTimeLoad": "2021-08-18 10:35:45",
+              "buyRate": 83.55,
+              "sellRate": 85.68,
+              "baseCurrencyDigitCode": "978",
+              "baseCurrencySignCode": "EUR",
+              "quotedCurrencyDigitCode": "643",
+              "quotedCurrencySignCode": "RUB",
+              "baseCurrencyScale": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "productGroup": "Другие регионы ДО",
+      "productGroupCode": "10",
+      "content": [
+        {
+          "productName": "Другие регионы от 0",
+          "productCode": null,
+          "internetCode": null,
+          "limit": 0,
+          "officeCode": [
+            "1447",
+            "3669"
+          ],
+          "rates": [
+            {
+              "validFrom": "2021-08-18 10:25:45",
+              "dateTimeLoad": "2021-08-18 10:35:45",
+              "buyRate": 71.38,
+              "sellRate": 71.68,
+              "baseCurrencyDigitCode": "840",
+              "baseCurrencySignCode": "USD",
+              "quotedCurrencyDigitCode": "643",
+              "quotedCurrencySignCode": "RUB",
+              "baseCurrencyScale": 1
+            },
+            {
+              "validFrom": "2021-08-18 10:25:45",
+              "dateTimeLoad": "2021-08-18 10:35:45",
+              "buyRate": 71.38,
+              "sellRate": 71.68,
+              "baseCurrencyDigitCode": "978",
+              "baseCurrencySignCode": "EUR",
+              "quotedCurrencyDigitCode": "643",
+              "quotedCurrencySignCode": "RUB",
+              "baseCurrencyScale": 1
+            }
+          ]
+        },
+        {
+          "productName": "Другие регионы от 5000",
+          "productCode": null,
+          "internetCode": null,
+          "limit": 0,
+          "officeCode": [
+            "2332",
+            "8552"
+          ],
+          "rates": [
+            {
+              "validFrom": "2021-08-18 10:25:45",
+              "dateTimeLoad": "2021-08-18 10:35:45",
+              "buyRate": 71.38,
+              "sellRate": 71.68,
+              "baseCurrencyDigitCode": "840",
+              "baseCurrencySignCode": "USD",
+              "quotedCurrencyDigitCode": "643",
+              "quotedCurrencySignCode": "RUB",
+              "baseCurrencyScale": 1
+            },
+            {
+              "validFrom": "2021-08-18 10:25:45",
+              "dateTimeLoad": "2021-08-18 10:35:45",
+              "buyRate": 71.38,
+              "sellRate": 71.68,
+              "baseCurrencyDigitCode": "978",
+              "baseCurrencySignCode": "EUR",
+              "quotedCurrencyDigitCode": "643",
+              "quotedCurrencySignCode": "RUB",
+              "baseCurrencyScale": 1
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

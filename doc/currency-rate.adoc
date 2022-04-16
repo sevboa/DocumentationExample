@@ -1,0 +1,792 @@
+:app-name: currency-rate
+= Паспорт микросервиса _{app-name}_
+:toc:
+:toc-title: Оглавление
+:toclevels: 3
+
+:jira_url: https://confluence.ru/jira/browse
+// src_path - относительный путь, по которому расположены другие документы, которые далее будут включаться в ТЗ, схема plantuml, примеры запросов и ответов бэковых интерфейсов и т.д.
+:src_path: .
+:artifacts_path: {src_path}/adoc-artifacts
+//common_errors_url - адрес страницы в Confluence с возможными кодами ошибок. Используется далее в описании исключительных сценариев
+:common_errors_url: https://confluence.ru/confluence/pages/viewpage.action?pageId=548436
+// adlayer-134_url - адрес страницы с adlayer-134
+:adlayer-134_url: https://confluence.ru/confluence/pages/viewpage.action?pageId=848364834
+// adlayer-105_url - адрес страницы с adlayer-105
+:adlayer-105_url: https://confluence.ru/confluence/pages/viewpage.action?pageId=498339864394
+// findClientPerson_url - адрес страницы с правилами идентификации дубликатов в ЕК
+:findClientPerson_url: https://confluence.ru/pages/viewpage.action?pageId=4583636843
+// home-hflabs_url - домашняя страница банка в системе ЕК
+:home-hflabs_url: https://confluence.ru/pages/viewpage.action?pageId=6438743683
+
+.История изменений
+|===
+|Версия документа   |Версия контракта   |Дата изменения |Описание изменения                 | Задачи в Jira                 |Автор изменения
+
+|0.1                |1.0.0              |22.12.2021     |Создана исходная версия документа  |{jira_url}/INL-5843[INL-5843] {jira_url}/BRF-5467[BRF-5467]| Севбо А.А.
+
+|===
+== Общие сведения
+
+|===
+|Параметр |Описание
+
+|Техническое название сервиса	|{app-name}
+|Назначение сервиса	            |Предоставление курсов валют по запросу
+|Используется системами	        |ZAGAR
+|Использует системы	            |
+|Транспортный протокол	        |MQ, HTTP
+|Тип сервиса	                |HTTP
+|Кодировка	                    |UTF-8
+|Статус	                        |В разработке/рефакторинге
+|Руководства                    |
+|===
+
+== Протокол
+{src_path}/service-api.yaml
+
+== Описание работы микросервиса
+
+Первым потоком Микросервис забирает сообщения из топика Kafka в рамках метода получения сообщений и сохраняет курсы из сообщения в свою базу.
+
+Вторым потоком микросервис ожидает входящего запроса от потребителя и предоставляет данные по курсам из своей базы.
+
+=== Метод получения сообщений из топика Kafka currency-rate-from-zagar
+. Получает сообщение из топика Kafka с именем согласно конфигурационному параметру kafka_topic и форматом согласно <<currency-rate-from-ZAGAR_format, формату сообщения очереди>>
+. Сообщение от ZAGAR делятся на отдельные курсы и сортируются по limit от меньшего к большему
+. Происходит обработка каждого курса в отдельности
+.. Проводится поиск совпадающего по дате от, валюте, группе продукта, лимиту и офисам курса <<search_copy_currency_rate, Запрос поиска совпадающего курса>>
+.. Если такой курс ненайден, то:
+... Проводится поиск предыдущего курса и замена даты до на дату от согласно <<search_the_old_currency_rate_and_setting_the_end_of_the_currency_rate, Запрос поиска старого курса и заполнение даты до датой от нового курса>>
+... Если limit > 0, то выполняется <<search_limit_from_and_add_limit_to, Запрос поиска лимита от и добавление лимита до>>
+... Выполняется <<adding_new_currency_rate, Запрос добавления нового курса>>
+. В топик передается подтверждение о том что полученное сообщение было обработано
+. Конец работы метода
+
+
+=== Метод поиска актуальных курсов по параметрам
+. Выполняется проверка параметров запроса на соответствие протоколу согласно link:{src_path}/{yaml_file}[контракту микросервиса]
+.. Если проверка не успешна
+... Выполняется альтернативный сценарий {common_errors_url}[EC-Validation]
+. На основе входящих параметров формируется <<search_currency_rate, SQL запрос поиска курсов>>
+. <<search_currency_rate, SQL запрос поиска курсов>> выполняется
+. Микросервис преобразовывает результат согласно <<T_01_01, преобразованию результата SQL запроса поиска курсов T_01_01>>
+. Микросервис передает исходящий JSON объект REST сервиса потребителю
+. Конец работы метода
+
+
+== Описание SQL таблиц микросервиса
+
+.ER диаграмма структуры БД
+image::{src_path}/annex/db_ER_diagram.drawio.png[]
+
+=== Таблица ZAGAR_product_group
+
+.ZAGAR_product_group - Группы продуктов (справочник)
+[cols="3*<.<"]
+[%autowidth]
+|===
+
+h|Столбец
+h|Тип
+h|Описание
+
+|*сode*
+|VARCHAR(3)
+|Код группы продукта Zagar
+
+|*Description*
+|VARCHAR(512)
+|Описание группы продуктов Zagar
+
+|*CurrencyRateType_id*
+|SMALLINT
+|Идентификатор типа курсов валют внутренний
+
+|===
+
+.Содержимое ZAGAR_product_group - Группы продуктов (справочник)
+[cols="3*<.<"]
+[%autowidth]
+|===
+
+h|code
+h|Description
+h|CurrencyRateTypeId
+
+|10
+|Наличный / касса. Добавлено в рамках задачи [INL-4568]
+|2
+
+|30
+|Безналичный. Добавлено в рамках задачи [INL-4568]
+|3
+
+|40
+|Безналичный для карт. Добавлено в рамках задачи [INL-4568]
+|4
+
+|50
+|Курс ЦБ. Добавлено в рамках задачи [INL-4568]
+|1
+
+|===
+
+=== Таблица currency_rate_type
+
+.currency_rate_type - Тип курсов валют (справочник)
+[cols="3*<.<"]
+[%autowidth]
+|===
+
+h|Столбец
+h|Тип
+h|Описание
+
+|*id*
+|SMALLINT
+|Идентификатор типа курсов валют внутренний
+
+|*Code*
+|VARCHAR(64)
+|Код типа курсов валют
+
+|*Name*
+|VARCHAR(128)
+|Имя типа курсов валют
+
+|*Description*
+|VARCHAR(512)
+|Описание типа курсов валют
+
+|===
+
+.Содержимое currency_rate_type - Группы продуктов (справочник)
+[cols="4*<.<"]
+[%autowidth]
+|===
+
+h|id
+h|Code
+h|Name
+h|Description
+
+|1
+|central_bank
+|Central bank currency rate
+|Курс ЦБ. Добавлено в рамках задачи [INL-4568]
+
+|2
+|cash
+|Cash currency rate
+|Курс наличный. Добавлено в рамках задачи [INL-4568]
+
+|3
+|non_cash
+|Non cash currency rate
+|Курс безналичный. Добавлено в рамках задачи [INL-4568]
+
+|4
+|non_cash_for_cards
+|Non cash currency rate for cards
+|Курс безналичный для карт. Добавлено в рамках задачи [INL-4568]
+
+|===
+
+=== Таблица office_code_ZAGAR_currency_rate
+
+.office_code_ZAGAR_currency_rate - Коды офисов курсов валют из ZAGAR
+[cols="3*<.<"]
+[%autowidth]
+|===
+
+h|Столбец
+h|Тип
+h|Описание
+
+|*id*
+|BIGINT
+|Идентификатор связи кода офиса с курсом валют Zagar
+
+|*ZagarCurrencyRate_id*
+|BIGINT
+|Идентификатор курса валют из Zagar
+
+|*OfficeCode*
+|VARCHAR(6)
+|Код отделения банка
+
+|===
+
+=== Таблица ZAGAR_currency_rate
+
+.ZAGAR_currency_rate - Курсы валют из ZAGAR
+[cols="3*<.<"]
+[%autowidth]
+|===
+
+h|Столбец
+h|Тип
+h|Описание
+
+|*ZagarProductGroup_code*
+|VARCHAR(3)
+|Код группы продуктов Zagar
+
+|*exchangeRateLimitFrom*
+|NUMBER(19,10)
+|Нижний уровень (в базовой валюте) суммы, начиная с которого действует курс
+
+|*exchangeRateLimitTo*
+|NUMBER(19,10)
+|Верхний уровень (в базовой валюте) суммы, до которого действует курс
+
+|*BaseCurrencySignCode*
+|VARCHAR(3)
+|Буквенный код базовой валюты согласно ISO 4217 (RUB)
+
+|*BaseCurrencyDigitCode*
+|VARCHAR(3)
+|Цифровой код базовой валюты согласно ISO 4217 (643)
+
+|*QuotedCurrencySignCode*
+|VARCHAR(3)
+|Буквенный код котируемой валюты согласно ISO 4217 (RUB)
+
+|*QuotedCurrencyDigitCode*
+|VARCHAR(3)
+|Цифровой код котируемой валюты согласно ISO 4217 (643)
+
+|*BaseCurrencyScale*
+|INT
+|Масштабный множитель базовой валюты
+
+|*QuotedCurrencyScale*
+|INT
+|Масштабный множитель котируемой валюты
+
+|*BuyRate*
+|NUMBER(19,10)
+|Курс покупки
+
+|*SellRate*
+|NUMBER(19,10)
+|Курс продажи
+
+|*ValidFrom*
+|DATETIME
+|Дата и время начала действия курса
+
+|*ValidTo*
+|DATETIME
+|Дата и время конца действия курса
+
+|===
+
+
+== Структуры SQL запросов
+
+[#adding_new_currency_rate]
+=== Запрос добавления нового курса
+
+[source, sql]
+----
+(
+    INSERT INTO ZAGAR_CURRENCY_RATE
+    (
+        ID, 
+        ZAGARPRODUCTGROUP_CODE,
+        EXCHANGERATELIMITFROM,
+        BASECURRENCYSIGNCODE,
+        BASECURRENCYDIGITCODE,
+        QUOTEDCURRENCYSIGNCODE,
+        QUOTEDCURRENCYDIGITCODE,
+        BASECURRENCYSCALE,
+        QUOTEDCURRENCYSCALE,
+        BUYRATE,
+        SELLRATE,
+        VALIDFROM
+    )
+    VALUES
+    (
+        NF_CURRENCY_RATE_SEQ.NEXTVAL,
+        $productGroupCode,
+        $limit,
+        $baseCurrencySignCode,
+        $baseCurrencyDigitCode,
+        $quotedCurrencySignCode,
+        $quotedCurrencyDigitCode,
+        $baseCurrencyScale,
+        1,
+        $buyRate,
+        $sellRate,
+        $validFrom
+    )
+    RETURNING ID
+) as temp
+INSERT INTO OFFICE_CODE_ZAGAR_CURRENCY_RATE
+(
+    ID,
+    ZAGARCURRENCYRATE_ID,
+    OFFICECODE
+)
+VALUES
+(
+    NF_CURRENCY_RATE_SEQ.NEXTVAL,
+    temp.ID,
+    $officeCode[0]
+),
+(
+    NF_CURRENCY_RATE_SEQ.NEXTVAL,
+    temp.ID,
+    $officeCode[1]
+),
+...
+;
+----
+
+[#search_copy_currency_rate]
+=== Запрос поиска совпадающего курса
+
+[source, sql]
+----
+SELECT ZAGAR_CURRENCY_RATE.ID IS NOT NULL
+FROM ZAGAR_CURRENCY_RATE
+INNER JOIN OFFICE_CODE_ZAGAR_CURRENCY_RATE ON ZAGAR_CURRENCY_RATE.ID = OFFICE_CODE_ZAGAR_CURRENCY_RATE.ZAGARCURRENCYRATE_ID
+WHERE 
+    ZAGAR_CURRENCY_RATE.ZAGARPRODUCTGROUP_CODE = $productGroupCode
+    AND ZAGAR_CURRENCY_RATE.EXCHANGERATELIMITFROM = $limit
+    AND OFFICE_CODE_ZAGAR_CURRENCY_RATE.OFFICECODE IN $officeCode
+    AND ZAGAR_CURRENCY_RATE.BASECURRENCYSIGNCODE = $baseCurrencySignCode
+    AND ZAGAR_CURRENCY_RATE.QUOTEDCURRENCYSIGNCODE = $quotedCurrencySignCode
+    AND ZAGAR_CURRENCY_RATE.VALIDFROM = $validFrom
+----
+
+[#search_the_old_currency_rate_and_setting_the_end_of_the_currency_rate]
+=== Запрос поиска старого курса и заполнение даты до
+
+[source, sql]
+----
+UPDATE ZAGAR_CURRENCY_RATE
+SET ZAGAR_CURRENCY_RATE.VALIDTO = $validFrom
+WHERE
+    ZAGAR_CURRENCY_RATE.ID IN (
+        SELECT ZAGAR_CURRENCY_RATE.ID
+        FROM ZAGAR_CURRENCY_RATE
+        INNER JOIN OFFICE_CODE_ZAGAR_CURRENCY_RATE ON ZAGAR_CURRENCY_RATE.ID = OFFICE_CODE_ZAGAR_CURRENCY_RATE.ZAGARCURRENCYRATE_ID
+        WHERE 
+            ZAGAR_CURRENCY_RATE.ZAGARPRODUCTGROUP_CODE = $productGroupCode
+            AND OFFICE_CODE_ZAGAR_CURRENCY_RATE.OFFICECODE IN $officeCode
+            AND ZAGAR_CURRENCY_RATE.BASESIGNCURRENCYCODE = $baseCurrencySignCode
+            AND ZAGAR_CURRENCY_RATE.QUOTEDSIGNCURRENCYCODE = $quotedCurrencySignCode
+            AND ZAGAR_CURRENCY_RATE.VALIDTO IS NULL
+        ORDER BY VALIDFROM DESC
+    )
+;
+
+----
+
+[#search_limit_from_and_add_limit_to]
+=== Запрос поиска лимита от и добавление лимита до
+
+[source, sql]
+----
+UPDATE ZAGAR_CURRENCY_RATE
+SET ZAGAR_CURRENCY_RATE.EXCHANGERATELIMITTO = $limit
+WHERE
+    ZAGAR_CURRENCY_RATE.ID IN (SELECT ZAGAR_CURRENCY_RATE.ID
+    FROM ZAGAR_CURRENCY_RATE
+    INNER JOIN OFFICE_CODE_ZAGAR_CURRENCY_RATE ON OFFICE_CODE_ZAGAR_CURRENCY_RATE.ZAGARPRODUCTGROUP_ID = ZAGAR_CURRENCY_RATE.ID
+    WHERE 
+        ZAGAR_CURRENCY_RATE.ZAGARPRODUCTGROUP_CODE = $productGroupCode
+        AND ZAGAR_CURRENCY_RATE.EXCHANGERATELIMITFROM < $limit
+        AND ZAGAR_CURRENCY_RATE.EXCHANGERATELIMITTO IS NULL
+        AND OFFICE_CODE_ZAGAR_CURRENCY_RATE.OFFICECODE IN $officeCode
+        AND ZAGAR_CURRENCY_RATE.BASESIGNCURRENCYCODE = $baseCurrencySignCode
+        AND ZAGAR_CURRENCY_RATE.QUOTEDSIGNCURRENCYCODE = $quotedCurrencySignCode
+        AND ZAGAR_CURRENCY_RATE.VALIDFROM = $validFrom
+        )
+    ORDER BY ZAGAR_CURRENCY_RATE.EXCHANGERATELIMITFROM ASC)
+;
+----
+
+[#search_currency_rate]
+=== Запрос поиска курса
+
+[source, sql]
+----
+SELECT
+    CURRENCY_RATE_TYPE.CODE AS 'currencyRateTypeCode',
+    ARRAY(
+        SELECT OFFICE_CODE_ZAGAR_CURRENCY_RATE.OFFICECODE
+        FROM OFFICE_CODE_ZAGAR_CURRENCY_RATE
+        WHERE OFFICE_CODE_ZAGAR_CURRENCY_RATE.ZAGARCURRENCYRATE_ID = ZAGAR_CURRENCY_RATE.ID
+        ORDER BY OFFICE_CODE_ZAGAR_CURRENCY_RATE.OFFICECODE ASC
+        ) AS 'bankOfficeCodes',
+    ZAGAR_CURRENCY_RATE.EXCHANGERATELIMITFROM AS 'exchangeRateLimitFrom',
+    ZAGAR_CURRENCY_RATE.EXCHANGERATELIMITTO AS 'exchangeRateLimitTo',
+    ZAGAR_CURRENCY_RATE.BASECURRENCYSIGNCODE AS 'baseCurrencySignCode',
+    ZAGAR_CURRENCY_RATE.BASECURRENCYDIGITCODE AS 'baseCurrencyDigitCode',
+    ZAGAR_CURRENCY_RATE.QUOTEDCURRENCYSIGNCODE AS 'quotedCurrencySignCode',
+    ZAGAR_CURRENCY_RATE.QUOTEDCURRENCYDIGITCODE AS 'quotedCurrencyDigitCode',
+    ZAGAR_CURRENCY_RATE.BASECURRENCYSCALE AS 'baseCurrencyScale',
+    ZAGAR_CURRENCY_RATE.QUOTEDCURRENCYSCALE AS 'quotedCurrencyScale',
+    ZAGAR_CURRENCY_RATE.BUYRATE AS 'buyRate',
+    ZAGAR_CURRENCY_RATE.SELLRATE AS 'sellRate',
+    ZAGAR_CURRENCY_RATE.VALIDFROM AS 'validFrom'
+FROM ZAGAR_CURRENCY_RATE
+INNER JOIN ZAGAR_PRODUCT_GROUP ON ZAGAR_PRODUCT_GROUP.CODE = ZAGAR_CURRENCY_RATE.ZAGARPRODUCTGROUP_CODE
+INNER JOIN CURRENCY_RATE_TYPE ON CURRENCY_RATE_TYPE.ID = ZAGAR_PRODUCT_GROUP.CURRENCYRATETYPE_ID
+-- если в запросе заполнено поле bankOfficeCodes
+    INNER JOIN OFFICE_CODE_ZAGAR_CURRENCY_RATE ON OFFICE_CODE_ZAGAR_CURRENCY_RATE.ZAGARCURRENCYRATE_ID = ZAGAR_CURRENCY_RATE.ID
+WHERE
+    CURRENCY_RATE_TYPE.CODE = $currencyRateTypeCode
+    AND ZAGAR_CURRENCY_RATE.VALIDFROM <= NOW()
+    AND ZAGAR_CURRENCY_RATE.VALIDTO > NOW()
+    -- если в запросе заполнено поле bankOfficeCodes
+        AND (
+            OFFICE_CODE_ZAGAR_CURRENCY_RATE.CODE IN $bankOfficeCodes
+            OR OFFICE_CODE_ZAGAR_CURRENCY_RATE.CODE = '0'
+        )
+    -- если в запросе заполнено поле currencyExchangeAmount
+        AND ZAGAR_CURRENCY_RATE.EXCHANGERATELIMITFROM <= $currencyExchangeAmount
+        AND (
+            ZAGAR_CURRENCY_RATE.EXCHANGERATELIMITTO > $currencyExchangeAmount
+            OR ZAGAR_CURRENCY_RATE.EXCHANGERATELIMITTO IS NULL
+        )
+    -- если в запросе заполнено поле baseCurrencySignCode
+        AND ZAGAR_CURRENCY_RATE.BASECURRENCYSIGNCODE = $baseCurrencySignCode
+    -- если в запросе заполнено поле baseCurrencyDigitCode
+        AND ZAGAR_CURRENCY_RATE.BASECURRENCYDIGITCODE = $baseCurrencyDigitCode
+    -- если в запросе заполнено поле quotedCurrencySignCode
+        AND ZAGAR_CURRENCY_RATE.QUOTEDCURRENCYSIGNCODE = $quotedCurrencySignCode
+    -- если в запросе заполнено поле quotedCurrencyDigitCode
+        AND ZAGAR_CURRENCY_RATE.QUOTEDCURRENCYDIGITCODE = $quotedCurrencyDigitCode
+GROUP BY ZAGAR_CURRENCY_RATE.ID
+----
+
+== Примеры исходящих запросов и ответов
+
+[#currency-rate-from-ZAGAR_format]
+=== Тело сообщения из топика kafka
+[source, json]
+----
+{
+  "body": [
+    {
+      "productGroup": "Московский регион",
+      "productGroupCode": "10",
+      "content": [
+        {
+          "productName": "Московский регион от 0",
+          "productCode": null,
+          "internetCode": null,
+          "limit": 0,
+          "officeCode": [
+            "4556",
+            "1223"
+          ],
+          "rates": [
+            {
+              "validFrom": "2021-08-18 10:25:45",
+              "dateTimeLoad": "2021-08-18 10:35:45",
+              "buyRate": 71.38,
+              "sellRate": 71.68,
+              "baseCurrencyDigitCode": "840",
+              "baseCurrencySignCode": "USD",
+              "quotedCurrencyDigitCode": "643",
+              "quotedCurrencySignCode": "RUB",
+              "baseCurrencyScale": 1
+            },
+            {
+              "validFrom": "2021-08-18 10:25:45",
+              "dateTimeLoad": "2021-08-18 10:35:45",
+              "buyRate": 83.55,
+              "sellRate": 85.68,
+              "baseCurrencyDigitCode": "978",
+              "baseCurrencySignCode": "EUR",
+              "quotedCurrencyDigitCode": "643",
+              "quotedCurrencySignCode": "RUB",
+              "baseCurrencyScale": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "productGroup": "Другие регионы ДО",
+      "productGroupCode": "10",
+      "content": [
+        {
+          "productName": "Другие регионы от 0",
+          "productCode": null,
+          "internetCode": null,
+          "limit": 0,
+          "officeCode": [
+            "1447",
+            "3669"
+          ],
+          "rates": [
+            {
+              "validFrom": "2021-08-18 10:25:45",
+              "dateTimeLoad": "2021-08-18 10:35:45",
+              "buyRate": 71.38,
+              "sellRate": 71.68,
+              "baseCurrencyDigitCode": "840",
+              "baseCurrencySignCode": "USD",
+              "quotedCurrencyDigitCode": "643",
+              "quotedCurrencySignCode": "RUB",
+              "baseCurrencyScale": 1
+            },
+            {
+              "validFrom": "2021-08-18 10:25:45",
+              "dateTimeLoad": "2021-08-18 10:35:45",
+              "buyRate": 71.38,
+              "sellRate": 71.68,
+              "baseCurrencyDigitCode": "978",
+              "baseCurrencySignCode": "EUR",
+              "quotedCurrencyDigitCode": "643",
+              "quotedCurrencySignCode": "RUB",
+              "baseCurrencyScale": 1
+            }
+          ]
+        },
+        {
+          "productName": "Другие регионы от 5000",
+          "productCode": null,
+          "internetCode": null,
+          "limit": 0,
+          "officeCode": [
+            "2332",
+            "8552"
+          ],
+          "rates": [
+            {
+              "validFrom": "2021-08-18 10:25:45",
+              "dateTimeLoad": "2021-08-18 10:35:45",
+              "buyRate": 71.38,
+              "sellRate": 71.68,
+              "baseCurrencyDigitCode": "840",
+              "baseCurrencySignCode": "USD",
+              "quotedCurrencyDigitCode": "643",
+              "quotedCurrencySignCode": "RUB",
+              "baseCurrencyScale": 1
+            },
+            {
+              "validFrom": "2021-08-18 10:25:45",
+              "dateTimeLoad": "2021-08-18 10:35:45",
+              "buyRate": 71.38,
+              "sellRate": 71.68,
+              "baseCurrencyDigitCode": "978",
+              "baseCurrencySignCode": "EUR",
+              "quotedCurrencyDigitCode": "643",
+              "quotedCurrencySignCode": "RUB",
+              "baseCurrencyScale": 1
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+
+----
+
+
+== Таблицы преобразований
+
+[T_01_01]
+=== T_01_01
+
+.Преобразование результата SQL запроса поиска курсов
+[cols="8*<.<"]
+[%autowidth]
+|===
+1.2+^.<h|Наименование
+3+^.<h|Источник - SQL request
+1.2+<.<h|Преобразование
+3+^.<h|Получатель - Получатель ответа от МКС
+h|Атрибут
+h|Тип поля
+h|Обязательность
+h|Атрибут
+h|Тип поля
+h|Обязательность
+
+
+|Код группы продукта
+|*currencyRateTypeCode*
+|_VARCHAR(64)_
+|Да
+|Прямое
+|*./currencyRateTypeCode*
+|_string_
+|Да
+
+|Коды отделений банка
+|*bankOfficeCodes*
+|_ARRAY_
+|Да
+|Прямое
+|*./characteristicsRates/bankOfficeCodes*
+|_array_
+|Да
+
+|Нижний уровень (в базовой валюте) суммы, начиная с которого действует курс
+|*exchangeRateLimitFrom*
+|_INT_
+|Да
+|Прямое
+|*./characteristicsRates/exchangeRateLimitFrom*
+|_integer_
+|Да
+
+|Верхний уровень (в базовой валюте) суммы, до которого действует курс
+|*exchangeRateLimitTo*
+|_INT_
+|Да
+|Прямое
+|*./characteristicsRates/exchangeRateLimitTo*
+|_integer_
+|Да
+
+|Цифровой код базовой валюты согласно ISO 4217 (643)
+|*baseCurrencyDigitCode*
+|_VARCHAR(3)_
+|Да
+|Прямое
+|*./characteristicsRates/rates/baseCurrencyDigitCode*
+|_string_
+|Да
+
+|Буквенный код базовой валюты согласно ISO 4217 (RUB)
+|*baseCurrencySignCode*
+|_VARCHAR(3)_
+|Да
+|Прямое
+|*./characteristicsRates/rates/baseCurrencySignCode*
+|_string_
+|Да
+
+|Цифровой код котируемой валюты согласно ISO 4217 (643)
+|*quotedCurrencyDigitCode*
+|_VARCHAR(3)_
+|Да
+|Прямое
+|*./characteristicsRates/rates/quotedCurrencyDigitCode*
+|_string_
+|Да
+
+|Буквенный код котируемой валюты согласно ISO 4217 (RUB)
+|*quotedCurrencySignCode*
+|_VARCHAR(3)_
+|Да
+|Прямое
+|*./characteristicsRates/rates/quotedCurrencySignCode*
+|_string_
+|Да
+
+|Курс покупки
+|*buyRate*
+|_DECIMAL(9,10)_
+|Да
+|Прямое
+|*./characteristicsRates/rates/buyRate*
+|_number_
+|Да
+
+|Курс продажи
+|*sellRate*
+|_DECIMAL(9,10)_
+|Да
+|Прямое
+|*./characteristicsRates/rates/sellRate*
+|_number_
+|Да
+
+|Масштабный множитель базовой валюты
+|*baseCurrencyScale*
+|_INT_
+|Да
+|Прямое
+|*./characteristicsRates/rates/baseCurrencyScale*
+|_integer_
+|Да
+
+|Масштабный множитель котируемой валюты
+|*quotedCurrencyScale*
+|_INT_
+|Да
+|Прямое
+|*./characteristicsRates/rates/quotedCurrencyScale*
+|_integer_
+|Да
+
+|Дата и время начала действия курса
+|*validFrom*
+|_DATETIME_
+|Да
+|Прямое
+|*./characteristicsRates/rates/validFrom*
+|_string_
+|Да
+
+
+|===
+
+
+[#config]
+== Конфигурационные параметры
+
+|===
+|Параметр|Значение|Комментарий
+|kafka_topic|currency-rate-from-zagar|Имя очереди Kafka с данными курсов валют от Zagar
+
+
+|===
+
+== Нефункциональные требования
+
+=== Протоколирование работы
+
+. Результаты работы сервиса должны логироваться.
+.. Способ логирования: {adlayer-105_url}[стандартный механизм]
+
+=== Метрики
+
+. В процессе работы с момента запуска сервис должен собирать RED метрики:
++
+* *Rate, Error* - _count_ (кол-во запросов)
+* *Duration* - _max_ (максимальное время), _totalTime_ (общее время всех запросов) и _count_ (кол-во запросов). Среднее можно вычислить на стороне системы мониторинга, как _totalTime/count_
+* *Rate, Error, Duration* собираем по каждой операции (методу) микросервиса
+* *Duration* собираем для вызовов внешних бэковых интерфейсов (JDBC, WS, MQ). _Max, totalTime_ и _count_
+
+=== Производительность
+
+|===
+|Параметр	|Значение
+
+|Планируемая нагрузка	| 30000
+|Максимальное количество запросов в день	| 2000
+|Среднее количество запросов в день	|  1000
+|Максимальное время отклика	| 1 сек
+|===
+
+=== Доступность
+. Время доступности: 24x7*365
+
+=== Класс восстановления
+|===
+|Класс критичности	|Класс восстановления |RTO |RPO
+
+|Mission Critical |1 класс |4 часа |1,5 часа
+|===
+
+=== Политики обеспечения безопасности и целостности
+. ???
+
+=== Аутентификация и авторизация
+. По умолчанию
+
+=== Защищаемые объекты
+. Размещение во внутреннем контуре.

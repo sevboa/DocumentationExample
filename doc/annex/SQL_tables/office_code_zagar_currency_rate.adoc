@@ -1,0 +1,21 @@
+[cols="3*<.<"]
+[%autowidth]
+|===
+
+h|Столбец
+h|Тип
+h|Описание
+
+|*id*
+|BIGINT
+|Идентификатор связи кода офиса с курсом валют Zagar
+
+|*ZagarCurrencyRate_id*
+|BIGINT
+|Идентификатор курса валют из Zagar
+
+|*OfficeCode*
+|VARCHAR(6)
+|Код отделения банка
+
+|===

@@ -1,0 +1,30 @@
+[cols="4*<.<"]
+[%autowidth]
+|===
+
+h|id
+h|Code
+h|Name
+h|Description
+
+|1
+|central_bank
+|Central bank currency rate
+|Курс ЦБ. Добавлено в рамках задачи [INL-4568]
+
+|2
+|cash
+|Cash currency rate
+|Курс наличный. Добавлено в рамках задачи [INL-4568]
+
+|3
+|non_cash
+|Non cash currency rate
+|Курс безналичный. Добавлено в рамках задачи [INL-4568]
+
+|4
+|non_cash_for_cards
+|Non cash currency rate for cards
+|Курс безналичный для карт. Добавлено в рамках задачи [INL-4568]
+
+|===

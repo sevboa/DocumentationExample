@@ -1,0 +1,134 @@
+[cols="8*<.<"]
+[%autowidth]
+|===
+1.2+^.<h|Наименование
+3+^.<h|Источник - SQL request
+1.2+<.<h|Преобразование
+3+^.<h|Получатель - Получатель ответа от МКС
+h|Атрибут
+h|Тип поля
+h|Обязательность
+h|Атрибут
+h|Тип поля
+h|Обязательность
+
+
+|Код группы продукта
+|*currencyRateTypeCode*
+|_VARCHAR(64)_
+|Да
+|Прямое
+|*./currencyRateTypeCode*
+|_string_
+|Да
+
+|Коды отделений банка
+|*bankOfficeCodes*
+|_ARRAY_
+|Да
+|Прямое
+|*./characteristicsRates/bankOfficeCodes*
+|_array_
+|Да
+
+|Нижний уровень (в базовой валюте) суммы, начиная с которого действует курс
+|*exchangeRateLimitFrom*
+|_INT_
+|Да
+|Прямое
+|*./characteristicsRates/exchangeRateLimitFrom*
+|_integer_
+|Да
+
+|Верхний уровень (в базовой валюте) суммы, до которого действует курс
+|*exchangeRateLimitTo*
+|_INT_
+|Да
+|Прямое
+|*./characteristicsRates/exchangeRateLimitTo*
+|_integer_
+|Да
+
+|Цифровой код базовой валюты согласно ISO 4217 (643)
+|*baseCurrencyDigitCode*
+|_VARCHAR(3)_
+|Да
+|Прямое
+|*./characteristicsRates/rates/baseCurrencyDigitCode*
+|_string_
+|Да
+
+|Буквенный код базовой валюты согласно ISO 4217 (RUB)
+|*baseCurrencySignCode*
+|_VARCHAR(3)_
+|Да
+|Прямое
+|*./characteristicsRates/rates/baseCurrencySignCode*
+|_string_
+|Да
+
+|Цифровой код котируемой валюты согласно ISO 4217 (643)
+|*quotedCurrencyDigitCode*
+|_VARCHAR(3)_
+|Да
+|Прямое
+|*./characteristicsRates/rates/quotedCurrencyDigitCode*
+|_string_
+|Да
+
+|Буквенный код котируемой валюты согласно ISO 4217 (RUB)
+|*quotedCurrencySignCode*
+|_VARCHAR(3)_
+|Да
+|Прямое
+|*./characteristicsRates/rates/quotedCurrencySignCode*
+|_string_
+|Да
+
+|Курс покупки
+|*buyRate*
+|_DECIMAL(9,10)_
+|Да
+|Прямое
+|*./characteristicsRates/rates/buyRate*
+|_number_
+|Да
+
+|Курс продажи
+|*sellRate*
+|_DECIMAL(9,10)_
+|Да
+|Прямое
+|*./characteristicsRates/rates/sellRate*
+|_number_
+|Да
+
+|Масштабный множитель базовой валюты
+|*baseCurrencyScale*
+|_INT_
+|Да
+|Прямое
+|*./characteristicsRates/rates/baseCurrencyScale*
+|_integer_
+|Да
+
+|Масштабный множитель котируемой валюты
+|*quotedCurrencyScale*
+|_INT_
+|Да
+|Прямое
+|*./characteristicsRates/rates/quotedCurrencyScale*
+|_integer_
+|Да
+
+|Дата и время начала действия курса
+|*validFrom*
+|_DATETIME_
+|Да
+|Прямое
+|*./characteristicsRates/rates/validFrom*
+|_string_
+|Да
+
+
+|===

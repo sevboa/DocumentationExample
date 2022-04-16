@@ -1,0 +1,61 @@
+[cols="3*<.<"]
+[%autowidth]
+|===
+
+h|Столбец
+h|Тип
+h|Описание
+
+|*ZagarProductGroup_code*
+|VARCHAR(3)
+|Код группы продуктов Zagar
+
+|*exchangeRateLimitFrom*
+|NUMBER(19,10)
+|Нижний уровень (в базовой валюте) суммы, начиная с которого действует курс
+
+|*exchangeRateLimitTo*
+|NUMBER(19,10)
+|Верхний уровень (в базовой валюте) суммы, до которого действует курс
+
+|*BaseCurrencySignCode*
+|VARCHAR(3)
+|Буквенный код базовой валюты согласно ISO 4217 (RUB)
+
+|*BaseCurrencyDigitCode*
+|VARCHAR(3)
+|Цифровой код базовой валюты согласно ISO 4217 (643)
+
+|*QuotedCurrencySignCode*
+|VARCHAR(3)
+|Буквенный код котируемой валюты согласно ISO 4217 (RUB)
+
+|*QuotedCurrencyDigitCode*
+|VARCHAR(3)
+|Цифровой код котируемой валюты согласно ISO 4217 (643)
+
+|*BaseCurrencyScale*
+|INT
+|Масштабный множитель базовой валюты
+
+|*QuotedCurrencyScale*
+|INT
+|Масштабный множитель котируемой валюты
+
+|*BuyRate*
+|NUMBER(19,10)
+|Курс покупки
+
+|*SellRate*
+|NUMBER(19,10)
+|Курс продажи
+
+|*ValidFrom*
+|DATETIME
+|Дата и время начала действия курса
+
+|*ValidTo*
+|DATETIME
+|Дата и время конца действия курса
+
+|===
